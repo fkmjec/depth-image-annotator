@@ -4,35 +4,55 @@ import cv2
 import numpy as np
 import time
 
+class State:
+    def __init__(self, image: np.ndarray):
+        self.orig_img = image
+        self.first_click = None
+        self.last_click = None
+        self.fixed = False
+    
+    def mouse_callback(self, event, x, y):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if self.fixed:
+                self.first_click = None
+                self.last_click = None
+                self.fixed = False
+                return
+            if self.first_click is None:
+                self.first_click = (x, y)
+            else:
+                self.last_click = (x, y)
+                self.fixed = True
+        elif self.first_click is not None and not self.fixed:
+            self.last_click = (x, y)
+
+    def render(self) -> np.ndarray:
+        displayed = self.orig_img.copy()
+        if self.first_click is not None and self.last_click is not None:
+            cv2.rectangle(displayed, self.first_click, self.last_click, color=(255,0,0), thickness=3)
+        return displayed
+
+STATE: State = None
+
 # TODO what is the format for YOLO datasets?
-IMAGE = None
-#define the events for the 
-# mouse_click. 
 def mouse_click(event, x, y,  
-                flags, param): 
-    global IMAGE
-    if event == cv2.EVENT_LBUTTONDOWN:           
-        center_coordinates = (x, y)  # Center of the image
-        radius = 100  # Radius of the circle
-        color = (0, 0, 255)  # Red color in BGR format
-        thickness = -1  # Thickness of the circle outline (-1 to fill the circle)        # cv2.imshow('image', IMAGE) 
-        cv2.circle(IMAGE, center_coordinates, radius, color, thickness)
-        print("drew circle")
-          
-  
+                flags, param):
+    STATE.mouse_callback(event, x, y)
 
 def run(folder="data/"):
-    global IMAGE
+    global STATE
     image_files = os.listdir(folder)
     image_files = filter(lambda x: os.path.isfile(folder + x), image_files)
     for filename in image_files:
         assert filename.endswith(".npy")
         path = folder + filename
-        IMAGE = np.load(path)
-        cv2.imshow("image", IMAGE)
+        img = np.load(path)
+        STATE = State(img)
+        cv2.imshow("image", STATE.render())
         cv2.setMouseCallback('image', mouse_click) 
         while True:
-            cv2.imshow("image", IMAGE)
+            image = STATE.render()
+            cv2.imshow("image", image)
             time.sleep(0.01)
             if cv2.waitKey(1) == ord('q'):
                 break

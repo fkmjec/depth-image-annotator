@@ -2,6 +2,7 @@ import argparse
 import os
 import cv2
 import numpy as np
+import time
 
 # TODO what is the format for YOLO datasets?
 IMAGE = None
@@ -9,53 +10,32 @@ IMAGE = None
 # mouse_click. 
 def mouse_click(event, x, y,  
                 flags, param): 
-    print(x, y)
-    # to check if left mouse  
-    # button was clicked 
-    if event == cv2.EVENT_LBUTTONDOWN: 
+    global IMAGE
+    if event == cv2.EVENT_LBUTTONDOWN:           
+        center_coordinates = (x, y)  # Center of the image
+        radius = 100  # Radius of the circle
+        color = (0, 0, 255)  # Red color in BGR format
+        thickness = -1  # Thickness of the circle outline (-1 to fill the circle)        # cv2.imshow('image', IMAGE) 
+        cv2.circle(IMAGE, center_coordinates, radius, color, thickness)
+        print("drew circle")
           
-        # font for left click event 
-        font = cv2.FONT_HERSHEY_TRIPLEX 
-        LB = 'Left Button'
-        # display that left button  
-        # was clicked. 
-        cv2.putText(IMAGE, LB, (x, y),  
-                    font, 1,  
-                    (255, 255, 0),  
-                    2)  
-        # cv2.imshow('image', IMAGE) 
-          
-          
-    # to check if right mouse  
-    # button was clicked 
-    if event == cv2.EVENT_RBUTTONDOWN: 
-           
-        # font for right click event 
-        font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX 
-        RB = 'Right Button'
-          
-        # display that right button  
-        # was clicked. 
-        cv2.putText(IMAGE, RB, (x, y), 
-                    font, 1,  
-                    (0, 255, 255), 
-                    2) 
-        # cv2.imshow('image', IMAGE) 
   
 
 def run(folder="data/"):
+    global IMAGE
     image_files = os.listdir(folder)
     image_files = filter(lambda x: os.path.isfile(folder + x), image_files)
     for filename in image_files:
         assert filename.endswith(".npy")
         path = folder + filename
-        image = np.load(path)
-        IMAGE = image
-        cv2.imshow("image", image)
-        print(IMAGE)
+        IMAGE = np.load(path)
+        cv2.imshow("image", IMAGE)
         cv2.setMouseCallback('image', mouse_click) 
-        if cv2.waitKey(-1) == ord('q'):
-            break
+        while True:
+            cv2.imshow("image", IMAGE)
+            time.sleep(0.01)
+            if cv2.waitKey(1) == ord('q'):
+                break
 
 if __name__ == "__main__":
     run()

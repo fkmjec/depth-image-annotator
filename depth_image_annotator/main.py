@@ -33,14 +33,13 @@ class State:
                 self.first_click = (x, y)
             else:
                 self.last_click = (x, y)
-                print(f"rectangle: {self.first_click}, {self.last_click}")
                 self.fixed = True
         elif self.first_click is not None and not self.fixed:
             self.last_click = (x, y)
     
     def save(self):
         with open(self.label_dir + f"/{self.filename}.txt", "w") as f:
-            if self.fixed:
+            if self.last_click is not None:
                 first_normalized = self.to_percentage(self.first_click)
                 second_normalized = self.to_percentage(self.last_click)
                 center_x = (second_normalized[0] + first_normalized[0]) / 2
@@ -69,16 +68,12 @@ def mouse_click(event, x, y,
 def run(folder="data/", out_dir="out/"):
     global STATE
     image_files = os.listdir(folder)
-    img_save_dir = out_dir + "images"
-    label_save_dir = out_dir + "labels"
+    img_save_dir = out_dir + "images/"
+    label_save_dir = out_dir + "labels/"
 
-    try:
-        os.mkdir(out_dir)
-        os.mkdir(img_save_dir)
-        os.mkdir(label_save_dir)
-    except FileExistsError:
-        logger.error(f"Directory {out_dir} already exists, stopping!")
-        return
+    # TODO: maybe add a warning here if the dirs exists
+    os.makedirs(img_save_dir, exist_ok=True)
+    os.makedirs(label_save_dir, exist_ok=True)
     
     image_files = filter(lambda x: os.path.isfile(folder + x), image_files)
     stopped = False
@@ -87,8 +82,13 @@ def run(folder="data/", out_dir="out/"):
             break
         assert filename.endswith(".npy")
         path = folder + filename
+        stripped_fn = filename[0:-4]
+        if os.path.exists(label_save_dir + stripped_fn + ".txt") and os.path.exists(img_save_dir + stripped_fn + ".png"):
+            # if outputs already exist, we skip the image
+            logger.info(f"label output {label_save_dir + stripped_fn + ".txt"} and image output {img_save_dir + filename} already exist, skipping.")
+            continue
         img = np.load(path)
-        STATE = State(img, filename[0:-4], img_save_dir, label_save_dir)
+        STATE = State(img, stripped_fn, img_save_dir, label_save_dir)
         cv2.imshow("image", STATE.render())
         cv2.setMouseCallback('image', mouse_click) 
         while True:
@@ -103,6 +103,8 @@ def run(folder="data/", out_dir="out/"):
                 STATE.save()
                 break
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 if __name__ == "__main__":
     run()

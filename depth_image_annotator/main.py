@@ -65,9 +65,9 @@ def mouse_click(event, x, y,
                 flags, param):
     STATE.mouse_callback(event, x, y)
 
-def run(folder="data/", out_dir="out/"):
+def run(in_dir: str, out_dir: str):
     global STATE
-    image_files = os.listdir(folder)
+    image_files = os.listdir(in_dir)
     img_save_dir = out_dir + "images/"
     label_save_dir = out_dir + "labels/"
 
@@ -75,13 +75,13 @@ def run(folder="data/", out_dir="out/"):
     os.makedirs(img_save_dir, exist_ok=True)
     os.makedirs(label_save_dir, exist_ok=True)
     
-    image_files = filter(lambda x: os.path.isfile(folder + x), image_files)
+    image_files = filter(lambda x: os.path.isfile(in_dir + x), image_files)
     stopped = False
     for filename in image_files:
         if stopped:
             break
         assert filename.endswith(".npy")
-        path = folder + filename
+        path = in_dir + filename
         stripped_fn = filename[0:-4]
         if os.path.exists(label_save_dir + stripped_fn + ".txt") and os.path.exists(img_save_dir + stripped_fn + ".png"):
             # if outputs already exist, we skip the image
@@ -106,5 +106,10 @@ def run(folder="data/", out_dir="out/"):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser("Depth image annotator for ASL")
+    parser.add_argument("--in_dir", help="Input image directory. Contains raw .npy files (in the future, could be changed to png).", required=True)
+    parser.add_argument("--out_dir", help="Output dataset directory", default="out/")
+    args = parser.parse_args()
+    run(args.in_dir, args.out_dir)

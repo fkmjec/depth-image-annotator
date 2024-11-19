@@ -5,8 +5,19 @@ import numpy as np
 import time
 import logging
 
+def rescale(depth, min_range_mm, max_range_mm):
+    scaled = (
+        (
+            (depth - min_range_mm).astype(np.float32)
+            / (max_range_mm - min_range_mm)
+        )
+        * 255
+    ).astype(np.uint8)
+    return scaled
+
+
 class State:
-    def __init__(self, image: np.ndarray, filename, img_dir, label_dir):
+    def __init__(self, image: np.ndarray, filename, img_dir, label_dir, min_range_mm, max_range_mm):
         self.filename = filename # name with stripped suffix (no .npy)
         self.orig_img = image
         self.first_click = None
@@ -14,6 +25,8 @@ class State:
         self.fixed = False
         self.label_dir = label_dir
         self.img_dir = img_dir
+        self.min_range_mm = min_range_mm
+        self.max_range_mm = max_range_mm
 
     def to_percentage(self, xy):
         max_x = self.orig_img.shape[1]
@@ -50,13 +63,15 @@ class State:
                 assert 0 <= size_x <= 1 and 0 <= size_y <= 1 
                 f.write(f"0: {center_x} {center_y} {size_x} {size_y}\n")
         
-        cv2.imwrite(self.img_dir + f"/{self.filename}.png", self.orig_img)
+        cv2.imwrite(self.img_dir + f"/{self.filename}.png", rescale(self.orig_img, self.min_range_mm, self.max_range_mm))
 
     def render(self) -> np.ndarray:
-        displayed = self.orig_img.copy()
+        depth = self.orig_img.copy()
+        scaled = rescale(depth, self.min_range_mm, self.max_range_mm)
+        color = cv2.cvtColor(scaled, cv2.COLOR_GRAY2BGR)
         if self.first_click is not None and self.last_click is not None:
-            cv2.rectangle(displayed, self.first_click, self.last_click, color=(255,0,0), thickness=3)
-        return displayed
+            cv2.rectangle(color, self.first_click, self.last_click, color=(255,0,0), thickness=3)
+        return color
 
 STATE: State = None
 
@@ -65,8 +80,12 @@ def mouse_click(event, x, y,
                 flags, param):
     STATE.mouse_callback(event, x, y)
 
-def run(in_dir: str, out_dir: str):
+def run(in_dir: str, out_dir: str, min_range_mm: int, max_range_mm: int):
     global STATE
+    if not in_dir.endswith("/"):
+        in_dir += "/"
+    if not out_dir.endswith("/"):
+        out_dir += "/"
     image_files = os.listdir(in_dir)
     img_save_dir = out_dir + "images/"
     label_save_dir = out_dir + "labels/"
@@ -85,10 +104,10 @@ def run(in_dir: str, out_dir: str):
         stripped_fn = filename[0:-4]
         if os.path.exists(label_save_dir + stripped_fn + ".txt") and os.path.exists(img_save_dir + stripped_fn + ".png"):
             # if outputs already exist, we skip the image
-            logger.info(f"label output {label_save_dir + stripped_fn + ".txt"} and image output {img_save_dir + filename} already exist, skipping.")
+            logger.info(f"label output {label_save_dir + stripped_fn + '.txt'} and image output {img_save_dir + filename} already exist, skipping.")
             continue
         img = np.load(path)
-        STATE = State(img, stripped_fn, img_save_dir, label_save_dir)
+        STATE = State(img, stripped_fn, img_save_dir, label_save_dir, min_range_mm, max_range_mm)
         cv2.imshow("image", STATE.render())
         cv2.setMouseCallback('image', mouse_click) 
         while True:
@@ -111,5 +130,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Depth image annotator for ASL")
     parser.add_argument("--in_dir", help="Input image directory. Contains raw .npy files (in the future, could be changed to png).", required=True)
     parser.add_argument("--out_dir", help="Output dataset directory", default="out/")
+    parser.add_argument("--min_range_mm", help="The minimum range of the depth detector", default=250)
+    parser.add_argument("--max_range_mm", help="The maximum range of the depth detector", default=2880)
     args = parser.parse_args()
-    run(args.in_dir, args.out_dir)
+    run(args.in_dir, args.out_dir, args.min_range_mm, args.max_range_mm)

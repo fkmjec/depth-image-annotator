@@ -81,9 +81,14 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.26.0", markers = "python_version >= \"3.12\""}
+numpy = [
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
+    {version = ">=1.23.5", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
+    {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\" and python_version < \"3.11\""},
+    {version = ">=1.21.2", markers = "platform_system != \"Darwin\" and python_version >= \"3.10\" and python_version < \"3.11\""},
+]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.12"
-content-hash = "240cef8c3129182d9e23acb7d3e51ec6ffea6ae9a3eb2ba4c0912c8f9c7855ed"
+python-versions = "^3.10"
+content-hash = "32419d86e63882e3cf2be93753e18e5968e9343759e3e61a71fb4920568e6265"
